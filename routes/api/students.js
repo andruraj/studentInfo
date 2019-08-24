@@ -4,7 +4,7 @@ const router = express.Router();
 const keys = require("../../config/keys");
 
 //input validation
-const validateRegisterInput = require("../../validation/add");
+const validateAddInput = require("../../validation/add");
 
 //user model
 const Student = require("../../models/Student");
@@ -28,26 +28,39 @@ router.post("/", (req, res) => {
   if (!isValid) {
     return res.status(400).json(errors);
   }
+  const newStudent = {};
+  if (req.body.firstname) newStudent.firstname = req.body.firstname;
+  if (req.body.lastname) newStudent.lastname = req.body.lastname;
+  if (req.body.mobile) newStudent.mobile = req.body.mobile;
+  if (req.body.email) newStudent.email = req.body.email;
 
-  User.findOne({ email: req.body.email })
-    .then(student => {
-      if (student) {
-        errors.email = "Email already exists";
-        return res.status(400).json(errors);
-      }
-      const newstudent = new Student({
-        firstname: req.body.firstname,
-        lastname: req.body.lastname,
-        email: req.body.email,
-        mobile: req.body.mobile
-      });
-
-      newStudent
-        .save()
+  Student.findOne({ email: newStudent.email }).then(student => {
+    if (student) {
+      Student.findOneAndUpdate(
+        { email: req.body.email },
+        { $set: newStudent },
+        { new: true }
+      )
         .then(student => res.json(student))
-        .catch(err => res.status(404).json(err));
-    })
-    .catch(err => res.status(404).json(err));
+        .catch(err => console.log(err));
+    } else {
+      //create
+      Student.findOne({ email: newStudent.email })
+        .then(student => {
+          if (student) {
+            errors.email = "Email already exists";
+            res.status(400).json(errors);
+          } else {
+            //save profile
+            new Student(newStudent)
+              .save()
+              .then(student => res.json(student))
+              .catch(err => console.log(err));
+          }
+        })
+        .catch(err => console.log(err));
+    }
+  });
 });
 
 // @route   GET api/students
